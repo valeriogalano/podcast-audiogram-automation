@@ -14,4 +14,4 @@ jobs:
       - name: Genera audiogram (ultimo episodio)
         run: |
           cd $HOME/PycharmProjects/pensieriincodice-audiogram-generator
-          .venv/bin/python -m audiogram_generator --episode last --soundbites all
+          .venv/bin/python -m audiogram_generator --episode last --soundbites all --limit 1
