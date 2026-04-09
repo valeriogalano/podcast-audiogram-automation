@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 120
 
     steps:
-      - name: Genera audiogram (ultimo episodio)
+      - name: Genera audiogram
         run: |
-          cd $HOME/PycharmProjects/pensieriincodice-audiogram-generator
+          cd $HOME/PycharmProjects/podcast-audiogram-generator
           .venv/bin/python -m audiogram_generator --limit 3
