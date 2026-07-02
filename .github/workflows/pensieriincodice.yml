@@ -17,6 +17,16 @@ on:
         required: false
         default: false
         type: boolean
+      episode:
+        description: "Episodio da processare (vuoto = da config: last). Es. 150"
+        required: false
+        default: ""
+        type: string
+      force:
+        description: "Rigenera con --force e azzera lo stato dell'episodio indicato"
+        required: false
+        default: false
+        type: boolean
 
 # Il reusable richiede contents: write (commit stato + Release). Va concesso qui,
 # perché il default del GITHUB_TOKEN del repo è read-only.
@@ -34,3 +44,5 @@ jobs:
       # su avvio manuale usa l'input scelto.
       mode: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event.schedule == '0 10 * * 2' && 'generate' || 'publish') }}
       dry_run: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && 'true' || 'false' }}
+      episode: ${{ github.event_name == 'workflow_dispatch' && inputs.episode || '' }}
+      force: ${{ (github.event_name == 'workflow_dispatch' && inputs.force) && 'true' || 'false' }}
