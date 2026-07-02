@@ -2,9 +2,11 @@ name: Audiogram pipeline (reusable)
 
 # Pipeline riutilizzabile per un singolo podcast su runner GitHub-hosted.
 # Modalità:
-#   full     -> restore -> generate -> archive -> publish -> commit stato
-#   generate -> restore -> generate -> archive
-#   publish  -> restore -> publish  -> commit stato
+#   full     -> restore -> [reset] -> generate -> archive -> publish -> commit stato
+#   generate -> restore -> [reset] -> generate -> archive
+#   publish  -> restore -> publish -> commit stato
+# [reset] avviene solo con force=true + episode specifico (azzera lo stato
+# dell'episodio in published.json prima di rigenerarlo/ripubblicarlo).
 # Viene invocata dai caller per-podcast (es. pensieriincodice.yml).
 
 on:
@@ -56,6 +58,16 @@ on:
         type: number
       dry_run:
         description: "Se 'true', il publisher gira in --dry-run (nessun upload, nessun commit stato)"
+        required: false
+        default: "false"
+        type: string
+      episode:
+        description: "Episodio da processare (vuoto = usa il config: last). Es. '150'"
+        required: false
+        default: ""
+        type: string
+      force:
+        description: "Se 'true': rigenera con --force e azzera lo stato dell'episodio indicato"
         required: false
         default: "false"
         type: string
@@ -168,10 +180,23 @@ jobs:
           echo "=== struttura ripristinata ==="
           find "$OUTPUT_DIR" -maxdepth 2 -type d | sort || true
 
+      - name: Reset stato episodio (force)
+        if: ${{ inputs.force == 'true' && inputs.episode != '' && inputs.episode != 'last' && inputs.episode != 'all' }}
+        run: |
+          ep="ep${{ inputs.episode }}"
+          tmp=$(mktemp)
+          # rimuove le voci "epNNN/..." da ogni piattaforma in published.json
+          jq --arg p "$ep/" 'to_entries | map(.value |= map(select(startswith($p) | not))) | from_entries' \
+            "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+          echo "stato azzerato per $ep:"; cat "$STATE_FILE"
+
       - name: Genera audiogram
         if: ${{ inputs.mode == 'full' || inputs.mode == 'generate' }}
         run: |
-          python -m audiogram_generator --config "$GENERATE_CFG" --limit ${{ inputs.generate_limit }}
+          EP=""; [ -n "${{ inputs.episode }}" ] && EP="--episode ${{ inputs.episode }}"
+          FORCE=""; [ "${{ inputs.force }}" = "true" ] && FORCE="--force"
+          python -m audiogram_generator --config "$GENERATE_CFG" \
+            --limit ${{ inputs.generate_limit }} $EP $FORCE
 
       - name: Archivia i video nelle Release
         if: ${{ inputs.mode == 'full' || inputs.mode == 'generate' }}
