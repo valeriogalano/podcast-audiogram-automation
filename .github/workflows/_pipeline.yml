@@ -54,6 +54,11 @@ on:
         required: false
         default: 1
         type: number
+      dry_run:
+        description: "Se true, il publisher gira in --dry-run (nessun upload, nessun commit stato)"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   pipeline:
@@ -172,11 +177,13 @@ jobs:
       - name: Pubblica sui social
         if: ${{ inputs.mode == 'full' || inputs.mode == 'publish' }}
         run: |
+          DRY=""
+          [ "${{ inputs.dry_run }}" = "true" ] && DRY="--dry-run"
           python -m publisher --config "$PUBLISH_CFG" --limit ${{ inputs.publish_limit }} \
-            --state-file "$STATE_FILE"
+            --state-file "$STATE_FILE" $DRY
 
       - name: Commit dello stato pubblicazioni
-        if: ${{ inputs.mode == 'full' || inputs.mode == 'publish' }}
+        if: ${{ (inputs.mode == 'full' || inputs.mode == 'publish') && inputs.dry_run == false }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

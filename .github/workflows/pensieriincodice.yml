@@ -12,6 +12,11 @@ on:
         default: full
         type: choice
         options: [full, generate, publish]
+      dry_run:
+        description: "Publisher in --dry-run (nessun upload, nessun commit stato)"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   run:
@@ -25,3 +30,4 @@ jobs:
       mode: >-
         ${{ github.event_name == 'workflow_dispatch' && inputs.mode
             || (github.event.schedule == '0 10 * * 2' && 'generate' || 'publish') }}
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
