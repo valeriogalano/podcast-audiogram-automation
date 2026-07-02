@@ -1,0 +1,38 @@
+# Config publisher per "Pensieri in codice".
+# NB: questo è un TEMPLATE. Le variabili ${...} vengono risolte a runtime dal
+# workflow (envsubst) prima di passare il file al tool.
+# I secret NON stanno qui: arrivano dall'Environment GitHub `pensieriincodice`.
+
+# Cartella prodotta dal generator (relativa al workspace). Risolta a runtime.
+input_dir: ${OUTPUT_DIR}
+
+# Stato pubblicazioni: file versionato nel repo, committato ad ogni run.
+state_file: ${STATE_FILE}
+
+youtube:
+  enabled: true
+  client_secrets: ${SECRETS_DIR}/youtube_client_secrets.json
+  token: ${SECRETS_DIR}/youtube_token.json
+  privacy: public          # private | unlisted | public
+  category_id: 28          # 28 = Science & Technology
+  default_tags:
+    - podcast
+    - shorts
+
+instagram:
+  enabled: false
+
+tiktok:
+  enabled: false
+
+telegram:
+  enabled: true
+  api_id: ${TELEGRAM_API_ID}
+  api_hash: ${TELEGRAM_API_HASH}
+  session: ${SECRETS_DIR}/telegram.session
+  peers:
+    - "me"
+    - "@pensieriincodice"
+    - "@pensieriincodicecommunity"
+  period: 86400            # durata story in secondi (86400 = 24h)
+  privacy: all             # all | contacts | close_friends

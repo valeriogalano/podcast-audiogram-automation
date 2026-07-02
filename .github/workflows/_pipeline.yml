@@ -1,0 +1,189 @@
+name: Audiogram pipeline (reusable)
+
+# Pipeline riutilizzabile per un singolo podcast su runner GitHub-hosted.
+# Modalità:
+#   full     -> restore -> generate -> archive -> publish -> commit stato
+#   generate -> restore -> generate -> archive
+#   publish  -> restore -> publish  -> commit stato
+# Viene invocata dai caller per-podcast (es. pensieriincodice.yml).
+
+on:
+  workflow_call:
+    inputs:
+      podcast:
+        description: "Nome cartella sotto podcasts/"
+        required: true
+        type: string
+      environment:
+        description: "GitHub Environment da cui ereditare i secret"
+        required: true
+        type: string
+      mode:
+        description: "full | generate | publish"
+        required: false
+        default: full
+        type: string
+      generator_repo:
+        required: false
+        default: valeriogalano/podcast-audiogram-generator
+        type: string
+      generator_ref:
+        required: false
+        default: main
+        type: string
+      publisher_repo:
+        required: false
+        default: valeriogalano/podcast-audiogram-publisher
+        type: string
+      publisher_ref:
+        required: false
+        default: main
+        type: string
+      generate_limit:
+        description: "Max soundbite renderizzati per episodio per run"
+        required: false
+        default: 3
+        type: number
+      publish_limit:
+        description: "Max soundbite pubblicati per run"
+        required: false
+        default: 1
+        type: number
+      restore_releases:
+        description: "Quante Release recenti ripristinare in ./output prima del run"
+        required: false
+        default: 1
+        type: number
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: write   # commit di published.json + gestione Release/asset
+    env:
+      OUTPUT_DIR: ${{ github.workspace }}/output
+      SECRETS_DIR: ${{ github.workspace }}/secrets
+      STATE_FILE: ${{ github.workspace }}/podcasts/${{ inputs.podcast }}/published.json
+      GENERATE_CFG: ${{ github.workspace }}/output/.generate.rendered.yaml
+      PUBLISH_CFG: ${{ github.workspace }}/output/.publish.rendered.yaml
+      TAG_PREFIX: ${{ inputs.podcast }}-
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout orchestratore
+        uses: actions/checkout@v4
+
+      - name: Checkout generator
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.generator_repo }}
+          ref: ${{ inputs.generator_ref }}
+          path: tools/generator
+
+      - name: Checkout publisher
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.publisher_repo }}
+          ref: ${{ inputs.publisher_ref }}
+          path: tools/publisher
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dipendenze di sistema (ffmpeg, font, envsubst)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core gettext-base
+
+      - name: Installa i tool
+        run: |
+          python -m pip install -U pip
+          pip install -r tools/generator/requirements.txt
+          pip install -e tools/generator
+          pip install -r tools/publisher/requirements.txt
+          pip install -e tools/publisher
+
+      - name: Ricostruisci i secret
+        env:
+          YOUTUBE_CLIENT_SECRETS: ${{ secrets.YOUTUBE_CLIENT_SECRETS }}
+          YOUTUBE_TOKEN: ${{ secrets.YOUTUBE_TOKEN }}
+          TELEGRAM_SESSION_B64: ${{ secrets.TELEGRAM_SESSION_B64 }}
+        run: |
+          mkdir -p "$SECRETS_DIR" "$OUTPUT_DIR"
+          [ -n "$YOUTUBE_CLIENT_SECRETS" ] && printf '%s' "$YOUTUBE_CLIENT_SECRETS" > "$SECRETS_DIR/youtube_client_secrets.json"
+          [ -n "$YOUTUBE_TOKEN" ] && printf '%s' "$YOUTUBE_TOKEN" > "$SECRETS_DIR/youtube_token.json"
+          [ -n "$TELEGRAM_SESSION_B64" ] && printf '%s' "$TELEGRAM_SESSION_B64" | base64 -d > "$SECRETS_DIR/telegram.session"
+          echo "secret ricostruiti in $SECRETS_DIR"
+
+      - name: Rendi le config (envsubst)
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+        run: |
+          VARS='$OUTPUT_DIR $SECRETS_DIR $STATE_FILE $TELEGRAM_API_ID $TELEGRAM_API_HASH'
+          envsubst "$VARS" < "podcasts/${{ inputs.podcast }}/generate.yaml" > "$GENERATE_CFG"
+          envsubst "$VARS" < "podcasts/${{ inputs.podcast }}/publish.yaml"  > "$PUBLISH_CFG"
+
+      - name: Restore archivio dalle Release
+        if: ${{ inputs.mode == 'full' || inputs.mode == 'publish' || inputs.mode == 'generate' }}
+        run: |
+          N=${{ inputs.restore_releases }}
+          tags=$(gh release list --limit 100 --json tagName -q '.[].tagName' \
+                 | grep -E "^${TAG_PREFIX}ep[0-9]+$" || true)
+          # ordina per numero episodio decrescente, prende le prime N
+          tags=$(echo "$tags" | sed -E 's/.*ep([0-9]+)$/\1 &/' \
+                 | sort -k1 -n -r | awk '{print $2}' | head -n "$N")
+          if [ -z "$tags" ]; then echo "Nessuna release da ripristinare"; exit 0; fi
+          for t in $tags; do
+            echo "restore $t"
+            gh release download "$t" -p '*.zip' -D "$OUTPUT_DIR" --clobber || continue
+          done
+          for z in "$OUTPUT_DIR"/*.zip; do
+            [ -e "$z" ] || continue
+            unzip -o -q "$z" -d "$OUTPUT_DIR" && rm -f "$z"
+          done
+          ls -la "$OUTPUT_DIR" || true
+
+      - name: Genera audiogram
+        if: ${{ inputs.mode == 'full' || inputs.mode == 'generate' }}
+        run: |
+          python -m audiogram_generator --config "$GENERATE_CFG" --limit ${{ inputs.generate_limit }}
+
+      - name: Archivia i video nelle Release
+        if: ${{ inputs.mode == 'full' || inputs.mode == 'generate' }}
+        run: |
+          shopt -s nullglob
+          for epdir in "$OUTPUT_DIR"/ep*/; do
+            ep=$(basename "$epdir")
+            tag="${TAG_PREFIX}${ep}"
+            zip="$OUTPUT_DIR/${tag}.zip"
+            ( cd "$OUTPUT_DIR" && zip -r -q "${tag}.zip" "$ep" )
+            gh release view "$tag" >/dev/null 2>&1 \
+              || gh release create "$tag" --title "$tag" --notes "Audiogram archive per $ep" >/dev/null
+            gh release upload "$tag" "$zip" --clobber
+            rm -f "$zip"
+            echo "archiviato $tag"
+          done
+
+      - name: Pubblica sui social
+        if: ${{ inputs.mode == 'full' || inputs.mode == 'publish' }}
+        run: |
+          python -m publisher --config "$PUBLISH_CFG" --limit ${{ inputs.publish_limit }} \
+            --state-file "$STATE_FILE"
+
+      - name: Commit dello stato pubblicazioni
+        if: ${{ inputs.mode == 'full' || inputs.mode == 'publish' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "podcasts/${{ inputs.podcast }}/published.json"
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica allo stato"
+          else
+            git commit -m "chore(${{ inputs.podcast }}): aggiorna stato pubblicazioni [skip ci]"
+            git push
+          fi

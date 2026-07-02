@@ -1,0 +1,69 @@
+# Config generator per "Pensieri in codice".
+# NB: questo è un TEMPLATE. Le variabili ${...} vengono risolte a runtime dal
+# workflow (envsubst) prima di passare il file al tool. Non eseguire il generator
+# direttamente su questo file.
+
+feed_url: https://pensieriincodice.it/podcast/index.xml
+
+# Reso relativo al workspace (era un path ProtonDrive/macOS). Risolto a runtime.
+output_dir: ${OUTPUT_DIR}
+
+# Su runner effimero renderizziamo l'episodio più recente; il restore dalle
+# Release rende il generator idempotente sugli episodi già prodotti.
+episode: last
+soundbites: all
+
+colors:
+  primary: [242, 101, 34]      # Arancione
+  background: [235, 213, 197]  # Beige
+  text: [255, 255, 255]        # Bianco
+  transcript_bg: [0, 0, 0]     # Nero
+
+# Font Linux (DejaVu è preinstallato su ubuntu-latest). Sostituisce il path
+# macOS /System/Library/Fonts/Helvetica.ttc.
+fonts:
+  header: /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+  transcript: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+
+formats:
+  vertical:
+    width: 1080
+    height: 1920
+    enabled: true
+    description: "Verticale 9:16 (Reels, Stories, Shorts, TikTok)"
+  square:
+    width: 1080
+    height: 1080
+    enabled: false
+    description: "Quadrato 1:1 (Post Instagram, Twitter, Mastodon)"
+  horizontal:
+    width: 1920
+    height: 1080
+    enabled: false
+    description: "Orizzontale 16:9 (YouTube)"
+
+hashtags:
+  - podcast
+  - pensieriincodice
+
+show_subtitles: false
+use_episode_cover: true
+header_title_source: soundbite
+
+caption_labels:
+  episode_prefix: "Episodio"
+  listen_full_prefix: "Ascolta l'episodio completo"
+
+cta:
+  enabled: false
+  text: "Link in bio"
+  vertical:
+    y_offset: 0.82
+  square:
+    y_offset: 0.85
+  horizontal:
+    y_offset: 0.85
+
+# Soundbites definiti manualmente (opzionale). Vuoto: il feed contiene i tag
+# <podcast:soundbite>.
+manual_soundbites:

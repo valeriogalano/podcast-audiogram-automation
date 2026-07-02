@@ -1,0 +1,27 @@
+name: Pensieri in codice
+
+on:
+  schedule:
+    - cron: '0 10 * * 2'   # martedì 10:00 UTC -> genera
+    - cron: '0 10 * * 4'   # giovedì 10:00 UTC -> pubblica
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full | generate | publish"
+        required: true
+        default: full
+        type: choice
+        options: [full, generate, publish]
+
+jobs:
+  run:
+    uses: ./.github/workflows/_pipeline.yml
+    secrets: inherit
+    with:
+      podcast: pensieriincodice
+      environment: pensieriincodice
+      # Su schedule scegli la modalità dal giorno (martedì=genera, giovedì=pubblica);
+      # su avvio manuale usa l'input scelto.
+      mode: >-
+        ${{ github.event_name == 'workflow_dispatch' && inputs.mode
+            || (github.event.schedule == '0 10 * * 2' && 'generate' || 'publish') }}

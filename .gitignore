@@ -1,0 +1,12 @@
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Artefatti di runtime della pipeline (mai committare)
+output/
+secrets/
+*.session
+*.rendered.yaml
