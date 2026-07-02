@@ -18,6 +18,11 @@ on:
         default: false
         type: boolean
 
+# Il reusable richiede contents: write (commit stato + Release). Va concesso qui,
+# perché il default del GITHUB_TOKEN del repo è read-only.
+permissions:
+  contents: write
+
 jobs:
   run:
     uses: ./.github/workflows/_pipeline.yml
@@ -27,7 +32,5 @@ jobs:
       environment: pensieriincodice
       # Su schedule scegli la modalità dal giorno (martedì=genera, giovedì=pubblica);
       # su avvio manuale usa l'input scelto.
-      mode: >-
-        ${{ github.event_name == 'workflow_dispatch' && inputs.mode
-            || (github.event.schedule == '0 10 * * 2' && 'generate' || 'publish') }}
-      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+      mode: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event.schedule == '0 10 * * 2' && 'generate' || 'publish') }}
+      dry_run: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && 'true' || 'false' }}

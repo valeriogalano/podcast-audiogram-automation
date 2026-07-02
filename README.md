@@ -21,8 +21,9 @@ restore (Release) → generate → archive (Release) → publish → commit stat
 
 - **restore** — scarica dalle GitHub Release recenti gli `.zip` in `./output`,
   così il runner effimero riparte dallo stato precedente e il generator è idempotente.
-- **archive** — carica/aggiorna uno `.zip` per episodio come asset della Release
-  `<podcast>-epNNN`. È l'**archivio scaricabile** anche per la pubblicazione manuale.
+- **archive** — carica i file (video, caption, ecc.) come **asset singoli** della
+  Release `<podcast>-epNNN`. È l'**archivio scaricabile** file per file, anche per
+  la pubblicazione manuale. Il `restore` ricostruisce le cartelle dai nomi.
 - **commit** — `published.json` (stato pubblicazioni) viene committato di ritorno.
 
 Modalità (`mode`): `full` | `generate` | `publish`.

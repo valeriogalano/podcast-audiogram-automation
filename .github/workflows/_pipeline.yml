@@ -55,10 +55,10 @@ on:
         default: 1
         type: number
       dry_run:
-        description: "Se true, il publisher gira in --dry-run (nessun upload, nessun commit stato)"
+        description: "Se 'true', il publisher gira in --dry-run (nessun upload, nessun commit stato)"
         required: false
-        default: false
-        type: boolean
+        default: "false"
+        type: string
 
 jobs:
   pipeline:
@@ -75,6 +75,10 @@ jobs:
       PUBLISH_CFG: ${{ github.workspace }}/output/.publish.rendered.yaml
       TAG_PREFIX: ${{ inputs.podcast }}-
       GH_TOKEN: ${{ github.token }}
+      # I tool si eseguono con `python -m`: i loro package vivono nella root dei
+      # rispettivi checkout, quindi li rendiamo importabili via PYTHONPATH
+      # (il publisher non ha packaging, quindi niente `pip install -e`).
+      PYTHONPATH: ${{ github.workspace }}/tools/generator:${{ github.workspace }}/tools/publisher
 
     steps:
       - name: Checkout orchestratore
@@ -104,13 +108,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg fonts-dejavu-core gettext-base
 
-      - name: Installa i tool
+      - name: Installa le dipendenze dei tool
         run: |
           python -m pip install -U pip
           pip install -r tools/generator/requirements.txt
-          pip install -e tools/generator
           pip install -r tools/publisher/requirements.txt
-          pip install -e tools/publisher
 
       - name: Ricostruisci i secret
         env:
@@ -143,15 +145,28 @@ jobs:
           tags=$(echo "$tags" | sed -E 's/.*ep([0-9]+)$/\1 &/' \
                  | sort -k1 -n -r | awk '{print $2}' | head -n "$N")
           if [ -z "$tags" ]; then echo "Nessuna release da ripristinare"; exit 0; fi
+          tmp=$(mktemp -d)
           for t in $tags; do
             echo "restore $t"
-            gh release download "$t" -p '*.zip' -D "$OUTPUT_DIR" --clobber || continue
+            # scarica solo gli asset caricati (NON gli archivi "Source code")
+            gh release download "$t" -D "$tmp/$t" --clobber || continue
           done
-          for z in "$OUTPUT_DIR"/*.zip; do
-            [ -e "$z" ] || continue
-            unzip -o -q "$z" -d "$OUTPUT_DIR" && rm -f "$z"
+          # ricostruisce output/epNNN/sbM/ dai nomi file appiattiti
+          find "$tmp" -type f | while read -r f; do
+            b=$(basename "$f")
+            ep=$(echo "$b" | sed -E 's/^(ep[0-9]+).*/\1/')
+            case "$b" in
+              ep[0-9]*_sb[0-9]*)
+                sb=$(echo "$b" | sed -E 's/^ep[0-9]+_(sb[0-9]+).*/\1/')
+                dest="$OUTPUT_DIR/$ep/$sb" ;;
+              *)
+                dest="$OUTPUT_DIR/$ep" ;;
+            esac
+            mkdir -p "$dest"; cp "$f" "$dest/$b"
           done
-          ls -la "$OUTPUT_DIR" || true
+          rm -rf "$tmp"
+          echo "=== struttura ripristinata ==="
+          find "$OUTPUT_DIR" -maxdepth 2 -type d | sort || true
 
       - name: Genera audiogram
         if: ${{ inputs.mode == 'full' || inputs.mode == 'generate' }}
@@ -165,13 +180,13 @@ jobs:
           for epdir in "$OUTPUT_DIR"/ep*/; do
             ep=$(basename "$epdir")
             tag="${TAG_PREFIX}${ep}"
-            zip="$OUTPUT_DIR/${tag}.zip"
-            ( cd "$OUTPUT_DIR" && zip -r -q "${tag}.zip" "$ep" )
+            # file singoli spacchettati (i nomi sono univoci nell'episodio)
+            mapfile -t files < <(find "$epdir" -type f)
+            [ ${#files[@]} -eq 0 ] && continue
             gh release view "$tag" >/dev/null 2>&1 \
-              || gh release create "$tag" --title "$tag" --notes "Audiogram archive per $ep" >/dev/null
-            gh release upload "$tag" "$zip" --clobber
-            rm -f "$zip"
-            echo "archiviato $tag"
+              || gh release create "$tag" --title "$tag" --notes "Audiogram per $ep" >/dev/null
+            gh release upload "$tag" "${files[@]}" --clobber
+            echo "archiviati ${#files[@]} file in $tag"
           done
 
       - name: Pubblica sui social
@@ -183,7 +198,7 @@ jobs:
             --state-file "$STATE_FILE" $DRY
 
       - name: Commit dello stato pubblicazioni
-        if: ${{ (inputs.mode == 'full' || inputs.mode == 'publish') && inputs.dry_run == false }}
+        if: ${{ (inputs.mode == 'full' || inputs.mode == 'publish') && inputs.dry_run != 'true' }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
