@@ -25,7 +25,5 @@ jobs:
     with:
       podcast: pensieriincodice
       environment: pensieriincodice
-      # Su schedule scegli la modalità dal giorno (martedì=genera, giovedì=pubblica);
-      # su avvio manuale usa l'input scelto.
-      mode: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event.schedule == '0 10 * * 2' && 'generate' || 'publish') }}
-      dry_run: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && 'true' || 'false' }}
+      mode: full
+      dry_run: 'true'
