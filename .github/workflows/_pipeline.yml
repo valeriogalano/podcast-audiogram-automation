@@ -55,10 +55,10 @@ on:
         default: 1
         type: number
       dry_run:
-        description: "Se true, il publisher gira in --dry-run (nessun upload, nessun commit stato)"
+        description: "Se 'true', il publisher gira in --dry-run (nessun upload, nessun commit stato)"
         required: false
-        default: false
-        type: boolean
+        default: "false"
+        type: string
 
 jobs:
   pipeline:
@@ -183,7 +183,7 @@ jobs:
             --state-file "$STATE_FILE" $DRY
 
       - name: Commit dello stato pubblicazioni
-        if: ${{ (inputs.mode == 'full' || inputs.mode == 'publish') && inputs.dry_run == false }}
+        if: ${{ (inputs.mode == 'full' || inputs.mode == 'publish') && inputs.dry_run != 'true' }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
