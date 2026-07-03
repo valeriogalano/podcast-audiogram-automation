@@ -54,6 +54,13 @@ caption_labels:
   episode_prefix: "Episodio"
   listen_full_prefix: "Ascolta l'episodio completo"
 
+# Posizione della trascrizione nel file .txt del caption:
+#   inline -> tra il titolo del soundbite e il link (default del generator)
+#   last   -> ultimo blocco, dopo gli hashtag
+#   none   -> omessa dal .txt (resta comunque nel .srt)
+# Richiede il supporto del generator (PR podcast-audiogram-generator#2).
+caption_transcript: last
+
 cta:
   enabled: false
   text: "Link in bio"
