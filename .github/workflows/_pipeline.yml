@@ -3,10 +3,12 @@ name: Audiogram pipeline (reusable)
 # Pipeline riutilizzabile per un singolo podcast su runner GitHub-hosted.
 # Modalità:
 #   full     -> restore -> [reset] -> generate -> archive -> publish -> commit stato
-#   generate -> restore -> [reset] -> generate -> archive
+#   generate -> restore -> [reset] -> generate -> archive [-> commit stato se reset]
 #   publish  -> restore -> publish -> commit stato
 # [reset] avviene solo con force=true + episode specifico (azzera lo stato
 # dell'episodio in published.json prima di rigenerarlo/ripubblicarlo).
+# Se il reset gira, lo stato azzerato viene committato in QUALUNQUE mode: così un
+# force-regen in mode=generate persiste e la successiva pubblicazione lo vede.
 # Viene invocata dai caller per-podcast (es. pensieriincodice.yml).
 
 on:
@@ -181,6 +183,7 @@ jobs:
           find "$OUTPUT_DIR" -maxdepth 2 -type d | sort || true
 
       - name: Reset stato episodio (force)
+        id: reset
         if: ${{ inputs.force == 'true' && inputs.episode != '' && inputs.episode != 'last' && inputs.episode != 'all' }}
         run: |
           ep="ep${{ inputs.episode }}"
@@ -226,9 +229,13 @@ jobs:
       # fallito: il publisher salva lo stato su disco subito dopo OGNI piattaforma
       # riuscita, quindi un fallimento parziale (es. una piattaforma non
       # configurata) non deve impedire di persistere cio' che e' stato pubblicato.
+      # steps.reset.outcome == 'success' fa committare anche in mode=generate
+      # quando lo step reset ha azzerato lo stato: senza questo, un force-regen
+      # in generate perderebbe il reset (workspace effimero) e i soundbite
+      # rigenerati non verrebbero mai ripubblicati.
       # Il commit avviene comunque solo se published.json e' effettivamente cambiato.
       - name: Commit dello stato pubblicazioni
-        if: ${{ !cancelled() && (inputs.mode == 'full' || inputs.mode == 'publish') && inputs.dry_run != 'true' }}
+        if: ${{ !cancelled() && inputs.dry_run != 'true' && (inputs.mode == 'full' || inputs.mode == 'publish' || steps.reset.outcome == 'success') }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
