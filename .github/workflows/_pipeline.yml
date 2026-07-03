@@ -222,8 +222,13 @@ jobs:
           python -m publisher --config "$PUBLISH_CFG" --limit ${{ inputs.publish_limit }} \
             --state-file "$STATE_FILE" $DRY
 
+      # !cancelled() fa girare il commit anche se lo step di pubblicazione e'
+      # fallito: il publisher salva lo stato su disco subito dopo OGNI piattaforma
+      # riuscita, quindi un fallimento parziale (es. una piattaforma non
+      # configurata) non deve impedire di persistere cio' che e' stato pubblicato.
+      # Il commit avviene comunque solo se published.json e' effettivamente cambiato.
       - name: Commit dello stato pubblicazioni
-        if: ${{ (inputs.mode == 'full' || inputs.mode == 'publish') && inputs.dry_run != 'true' }}
+        if: ${{ !cancelled() && (inputs.mode == 'full' || inputs.mode == 'publish') && inputs.dry_run != 'true' }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
