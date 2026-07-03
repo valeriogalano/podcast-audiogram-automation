@@ -36,3 +36,6 @@ telegram:
     - "@pensieriincodicecommunity"
   period: 86400            # durata story in secondi (86400 = 24h)
   privacy: all             # all | contacts | close_friends
+  # Testo del link cliccabile nel messaggio video (soundbite > 60s, che va come
+  # post normale invece che come storia). Il messaggio esclude la trascrizione.
+  link_text: "Ascolta l'episodio completo →"
