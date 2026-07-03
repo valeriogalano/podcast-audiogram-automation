@@ -62,7 +62,9 @@ ordine:
 5. **publish** — il publisher pubblica il prossimo soundbite non ancora pubblicato
    (`publish_limit` per run) sulle piattaforme con `enabled: true`.
 6. **commit stato** — `published.json` viene committato di ritorno nel repo
-   (saltato in `dry_run`).
+   (saltato in `dry_run`). Avviene in `full`/`publish` e **anche in `generate`
+   quando lo step *reset* è girato**: così un force-regen azzera lo stato in modo
+   persistente e la successiva pubblicazione ripubblica i soundbite rigenerati.
 
 ### Comportamento incrementale
 
@@ -98,10 +100,12 @@ contenuto:
 | Modalità | Step eseguiti | Uso tipico |
 |---|---|---|
 | `full` | restore → [reset] → generate → archive → publish → commit | Tutto in un colpo (avvio manuale) |
-| `generate` | restore → [reset] → generate → archive | Solo produzione + archivio (schedule del martedì) |
+| `generate` | restore → [reset] → generate → archive → [commit stato se reset] | Solo produzione + archivio (schedule del martedì) |
 | `publish` | restore → publish → commit | Solo pubblicazione (schedule del giovedì) |
 
-`[reset]` avviene solo se `force=true` con un `episode` specifico.
+`[reset]` avviene solo se `force=true` con un `episode` specifico. Quando il reset
+gira, lo stato azzerato viene committato in **qualunque** modalità (anche
+`generate`), così il force-regen persiste per la pubblicazione successiva.
 
 ### Input dell'avvio manuale (`workflow_dispatch`)
 
