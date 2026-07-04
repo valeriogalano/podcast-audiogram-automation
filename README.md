@@ -48,6 +48,10 @@ pipeline ricrea lo stato persistente (che sul vecchio Mac stava su disco) usando
 le **GitHub Releases** come archivio e committando lo stato nel repo. Gli step, in
 ordine:
 
+Le config renderizzate con `envsubst` vengono scritte in una directory temporanea
+del runner (`runner.temp`), separata da `output/`: l'archivio delle Release resta
+limitato agli asset generati.
+
 1. **restore** — scarica dalle Release recenti gli asset (i file dell'archivio) e
    **ricostruisce** `output/epNNN/sbM/` dai nomi file. Serve a far ripartire il
    runner dallo stato precedente, così il generator è *idempotente*.
