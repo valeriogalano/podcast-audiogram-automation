@@ -65,6 +65,9 @@ ordine:
    (saltato in `dry_run`). Avviene in `full`/`publish` e **anche in `generate`
    quando lo step *reset* è girato**: così un force-regen azzera lo stato in modo
    persistente e la successiva pubblicazione ripubblica i soundbite rigenerati.
+   I run dello stesso podcast sono accodati, non cancellati, e prima del push
+   dello stato il workflow fa `git pull --rebase --autostash` sul branch corrente:
+   un avanzamento di `main` durante il job non rende il push non-fast-forward.
 
 ### Comportamento incrementale
 

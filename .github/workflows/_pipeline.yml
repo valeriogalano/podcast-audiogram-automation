@@ -244,5 +244,6 @@ jobs:
             echo "Nessuna modifica allo stato"
           else
             git commit -m "chore(${{ inputs.podcast }}): aggiorna stato pubblicazioni [skip ci]"
-            git push
+            git pull --rebase --autostash origin "$GITHUB_REF_NAME"
+            git push origin HEAD:"$GITHUB_REF_NAME"
           fi
