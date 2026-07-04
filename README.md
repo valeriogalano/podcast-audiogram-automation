@@ -51,8 +51,9 @@ ordine:
 1. **restore** — scarica dalle Release recenti gli asset (i file dell'archivio) e
    **ricostruisce** `output/epNNN/sbM/` dai nomi file. Serve a far ripartire il
    runner dallo stato precedente, così il generator è *idempotente*.
-2. **reset** *(solo con `force` + `episode`)* — azzera in `published.json` le voci
-   dell'episodio indicato, per poterlo rigenerare/ripubblicare da capo.
+2. **reset** *(solo con `force` + `episode` esplicito)* — azzera in
+   `published.json` le voci dell'episodio indicato, per poterlo
+   rigenerare/ripubblicare da capo.
 3. **generate** — il generator produce gli audiogram. Senza `--force` **salta**
    ciò che è già presente (dopo il restore), quindi genera solo i soundbite nuovi,
    fino a `generate_limit` per run.
@@ -92,7 +93,9 @@ contenuto:
 
 > Nota: con la config attuale (`episode: last`, `restore_releases: 1`) i run
 > automatici toccano solo l'episodio più recente. Per intervenire su un episodio
-> più vecchio, usa un avvio manuale con `episode` esplicito (vedi sotto).
+> più vecchio, usa un avvio manuale con `episode` esplicito: il restore include
+> sempre anche la Release di quell'episodio, anche se è fuori dalle ultime
+> `restore_releases`.
 
 ---
 
@@ -104,11 +107,15 @@ contenuto:
 |---|---|---|
 | `full` | restore → [reset] → generate → archive → publish → commit | Tutto in un colpo (avvio manuale) |
 | `generate` | restore → [reset] → generate → archive → [commit stato se reset] | Solo produzione + archivio (schedule del martedì) |
-| `publish` | restore → publish → commit | Solo pubblicazione (schedule del giovedì) |
+| `publish` | restore → [reset] → publish → commit | Solo pubblicazione (schedule del giovedì) o ripubblicazione da archivio |
 
 `[reset]` avviene solo se `force=true` con un `episode` specifico. Quando il reset
 gira, lo stato azzerato viene committato in **qualunque** modalità (anche
 `generate`), così il force-regen persiste per la pubblicazione successiva.
+
+Se `episode` è esplicito in `full` o `publish`, il publisher riceve direttamente
+`output/epNNN` invece dell'intero `output/`: la pubblicazione resta mirata a
+quell'episodio anche se il restore ha ricostruito più Release.
 
 ### Input dell'avvio manuale (`workflow_dispatch`)
 
@@ -153,6 +160,12 @@ gh workflow run pensieriincodice.yml -f mode=generate -f episode=150 -f force=tr
 
 # Solo pubblicazione del prossimo soundbite in coda
 gh workflow run pensieriincodice.yml -f mode=publish
+
+# Ripubblica l'episodio 150 dagli asset gia' archiviati nella sua Release
+gh workflow run pensieriincodice.yml -f mode=publish -f episode=150 -f force=true
+
+# Rigenera e ripubblica subito l'episodio 150 nello stesso run
+gh workflow run pensieriincodice.yml -f mode=full -f episode=150 -f force=true
 ```
 
 ---

@@ -4,7 +4,7 @@ name: Audiogram pipeline (reusable)
 # Modalità:
 #   full     -> restore -> [reset] -> generate -> archive -> publish -> commit stato
 #   generate -> restore -> [reset] -> generate -> archive [-> commit stato se reset]
-#   publish  -> restore -> publish -> commit stato
+#   publish  -> restore -> [reset] -> publish -> commit stato
 # [reset] avviene solo con force=true + episode specifico (azzera lo stato
 # dell'episodio in published.json prima di rigenerarlo/ripubblicarlo).
 # Se il reset gira, lo stato azzerato viene committato in QUALUNQUE mode: così un
@@ -149,15 +149,36 @@ jobs:
           envsubst "$VARS" < "podcasts/${{ inputs.podcast }}/generate.yaml" > "$GENERATE_CFG"
           envsubst "$VARS" < "podcasts/${{ inputs.podcast }}/publish.yaml"  > "$PUBLISH_CFG"
 
+      - name: Valida input episodio
+        env:
+          EPISODE_INPUT: ${{ inputs.episode }}
+        run: |
+          case "$EPISODE_INPUT" in
+            ""|"last"|"all") ;;
+            *[!0-9]*)
+              echo "::error::episode deve essere vuoto, 'last', 'all' o numerico"
+              exit 1
+              ;;
+          esac
+
       - name: Restore archivio dalle Release
         if: ${{ inputs.mode == 'full' || inputs.mode == 'publish' || inputs.mode == 'generate' }}
+        env:
+          EPISODE_INPUT: ${{ inputs.episode }}
+          RESTORE_RELEASES: ${{ inputs.restore_releases }}
         run: |
-          N=${{ inputs.restore_releases }}
+          N="$RESTORE_RELEASES"
           tags=$(gh release list --limit 100 --json tagName -q '.[].tagName' \
                  | grep -E "^${TAG_PREFIX}ep[0-9]+$" || true)
           # ordina per numero episodio decrescente, prende le prime N
           tags=$(echo "$tags" | sed -E 's/.*ep([0-9]+)$/\1 &/' \
                  | sort -k1 -n -r | awk '{print $2}' | head -n "$N")
+          # Se viene richiesto un episodio esplicito, ripristina anche la sua
+          # release: puo' essere piu' vecchia delle ultime N.
+          if [ -n "$EPISODE_INPUT" ] && [ "$EPISODE_INPUT" != "last" ] && [ "$EPISODE_INPUT" != "all" ]; then
+            requested_tag="${TAG_PREFIX}ep${EPISODE_INPUT}"
+            tags=$(printf '%s\n%s\n' "$requested_tag" "$tags" | awk 'NF' | sort -u)
+          fi
           if [ -z "$tags" ]; then echo "Nessuna release da ripristinare"; exit 0; fi
           tmp=$(mktemp -d)
           for t in $tags; do
@@ -185,8 +206,10 @@ jobs:
       - name: Reset stato episodio (force)
         id: reset
         if: ${{ inputs.force == 'true' && inputs.episode != '' && inputs.episode != 'last' && inputs.episode != 'all' }}
+        env:
+          EPISODE_INPUT: ${{ inputs.episode }}
         run: |
-          ep="ep${{ inputs.episode }}"
+          ep="ep${EPISODE_INPUT}"
           tmp=$(mktemp)
           # rimuove le voci "epNNN/..." da ogni piattaforma in published.json
           jq --arg p "$ep/" 'to_entries | map(.value |= map(select(startswith($p) | not))) | from_entries' \
@@ -195,11 +218,15 @@ jobs:
 
       - name: Genera audiogram
         if: ${{ inputs.mode == 'full' || inputs.mode == 'generate' }}
+        env:
+          EPISODE_INPUT: ${{ inputs.episode }}
+          FORCE_INPUT: ${{ inputs.force }}
+          GENERATE_LIMIT: ${{ inputs.generate_limit }}
         run: |
-          EP=""; [ -n "${{ inputs.episode }}" ] && EP="--episode ${{ inputs.episode }}"
-          FORCE=""; [ "${{ inputs.force }}" = "true" ] && FORCE="--force"
+          EP=(); [ -n "$EPISODE_INPUT" ] && EP=(--episode "$EPISODE_INPUT")
+          FORCE=(); [ "$FORCE_INPUT" = "true" ] && FORCE=(--force)
           python -m audiogram_generator --config "$GENERATE_CFG" \
-            --limit ${{ inputs.generate_limit }} $EP $FORCE
+            --limit "$GENERATE_LIMIT" "${EP[@]}" "${FORCE[@]}"
 
       - name: Archivia i video nelle Release
         if: ${{ inputs.mode == 'full' || inputs.mode == 'generate' }}
@@ -219,11 +246,19 @@ jobs:
 
       - name: Pubblica sui social
         if: ${{ inputs.mode == 'full' || inputs.mode == 'publish' }}
+        env:
+          DRY_RUN_INPUT: ${{ inputs.dry_run }}
+          EPISODE_INPUT: ${{ inputs.episode }}
+          PUBLISH_LIMIT: ${{ inputs.publish_limit }}
         run: |
-          DRY=""
-          [ "${{ inputs.dry_run }}" = "true" ] && DRY="--dry-run"
-          python -m publisher --config "$PUBLISH_CFG" --limit ${{ inputs.publish_limit }} \
-            --state-file "$STATE_FILE" $DRY
+          TARGET=()
+          if [ -n "$EPISODE_INPUT" ] && [ "$EPISODE_INPUT" != "last" ] && [ "$EPISODE_INPUT" != "all" ]; then
+            TARGET=("$OUTPUT_DIR/ep${EPISODE_INPUT}")
+          fi
+          DRY=()
+          [ "$DRY_RUN_INPUT" = "true" ] && DRY=(--dry-run)
+          python -m publisher "${TARGET[@]}" --config "$PUBLISH_CFG" --limit "$PUBLISH_LIMIT" \
+            --state-file "$STATE_FILE" "${DRY[@]}"
 
       # !cancelled() fa girare il commit anche se lo step di pubblicazione e'
       # fallito: il publisher salva lo stato su disco subito dopo OGNI piattaforma
