@@ -83,10 +83,11 @@ jobs:
       contents: write   # commit di published.json + gestione Release/asset
     env:
       OUTPUT_DIR: ${{ github.workspace }}/output
+      CONFIG_DIR: ${{ runner.temp }}/audiogram-config
       SECRETS_DIR: ${{ github.workspace }}/secrets
       STATE_FILE: ${{ github.workspace }}/podcasts/${{ inputs.podcast }}/published.json
-      GENERATE_CFG: ${{ github.workspace }}/output/.generate.rendered.yaml
-      PUBLISH_CFG: ${{ github.workspace }}/output/.publish.rendered.yaml
+      GENERATE_CFG: ${{ runner.temp }}/audiogram-config/generate.yaml
+      PUBLISH_CFG: ${{ runner.temp }}/audiogram-config/publish.yaml
       TAG_PREFIX: ${{ inputs.podcast }}-
       GH_TOKEN: ${{ github.token }}
       # I tool si eseguono con `python -m`: i loro package vivono nella root dei
@@ -134,7 +135,7 @@ jobs:
           YOUTUBE_TOKEN: ${{ secrets.YOUTUBE_TOKEN }}
           TELEGRAM_SESSION_B64: ${{ secrets.TELEGRAM_SESSION_B64 }}
         run: |
-          mkdir -p "$SECRETS_DIR" "$OUTPUT_DIR"
+          mkdir -p "$SECRETS_DIR" "$OUTPUT_DIR" "$CONFIG_DIR"
           [ -n "$YOUTUBE_CLIENT_SECRETS" ] && printf '%s' "$YOUTUBE_CLIENT_SECRETS" > "$SECRETS_DIR/youtube_client_secrets.json"
           [ -n "$YOUTUBE_TOKEN" ] && printf '%s' "$YOUTUBE_TOKEN" > "$SECRETS_DIR/youtube_token.json"
           [ -n "$TELEGRAM_SESSION_B64" ] && printf '%s' "$TELEGRAM_SESSION_B64" | base64 -d > "$SECRETS_DIR/telegram.session"
