@@ -83,11 +83,11 @@ jobs:
       contents: write   # commit di published.json + gestione Release/asset
     env:
       OUTPUT_DIR: ${{ github.workspace }}/output
-      CONFIG_DIR: ${{ runner.temp }}/audiogram-config
+      CONFIG_DIR: ${{ github.workspace }}/.audiogram-config
       SECRETS_DIR: ${{ github.workspace }}/secrets
       STATE_FILE: ${{ github.workspace }}/podcasts/${{ inputs.podcast }}/published.json
-      GENERATE_CFG: ${{ runner.temp }}/audiogram-config/generate.yaml
-      PUBLISH_CFG: ${{ runner.temp }}/audiogram-config/publish.yaml
+      GENERATE_CFG: ${{ github.workspace }}/.audiogram-config/generate.yaml
+      PUBLISH_CFG: ${{ github.workspace }}/.audiogram-config/publish.yaml
       TAG_PREFIX: ${{ inputs.podcast }}-
       GH_TOKEN: ${{ github.token }}
       # I tool si eseguono con `python -m`: i loro package vivono nella root dei
