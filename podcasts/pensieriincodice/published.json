@@ -5,21 +5,26 @@
     "ep149/sb1",
     "ep149/sb2",
     "ep150/sb1",
-    "ep150/sb2"
+    "ep150/sb2",
+    "ep150/sb3"
   ],
   "telegram": [
     "ep148/sb1",
     "ep149/sb1",
     "ep150/sb1",
-    "ep150/sb2"
+    "ep150/sb2",
+    "ep150/sb3"
   ],
   "telegram:peer:me": [
-    "ep150/sb2"
+    "ep150/sb2",
+    "ep150/sb3"
   ],
   "telegram:peer:@pensieriincodice": [
-    "ep150/sb2"
+    "ep150/sb2",
+    "ep150/sb3"
   ],
   "telegram:peer:@pensieriincodicecommunity": [
-    "ep150/sb2"
+    "ep150/sb2",
+    "ep150/sb3"
   ]
 }
