@@ -30,10 +30,14 @@ telegram:
   api_id: ${TELEGRAM_API_ID}
   api_hash: ${TELEGRAM_API_HASH}
   session: ${SECRETS_DIR}/telegram.session
-  peers:
+  # Destinazioni distinte per le due strade scelte in base alla durata:
+  # <= 60s esce come storia, > 60s come messaggio video.
+  story_peers:
     - "me"
     - "@pensieriincodice"
     - "@pensieriincodicecommunity"
+  message_peers:
+    - "@pensieriincodice"
   period: 86400            # durata story in secondi (86400 = 24h)
   privacy: all             # all | contacts | close_friends
   # Testo del link cliccabile nel messaggio video (soundbite > 60s, che va come
