@@ -28,6 +28,10 @@ instagram:
   # Data ISO YYYY-MM-DD: il tool avvisa 7 giorni prima e rifiuta di pubblicare dopo.
   # Il token dura 60 giorni e lo rinnova instagram-token-refresh.yml.
   token_expiry: ${INSTAGRAM_TOKEN_EXPIRY}
+  # Questa API non carica file: Meta scarica il video da un URL pubblico. Usiamo
+  # l'asset della Release, che lo step "Archivia i video nelle Release" crea
+  # PRIMA di pubblicare. Se quell'ordine cambia, Instagram smette di funzionare.
+  video_url_template: "https://github.com/valeriogalano/podcast-audiogram-automation/releases/download/pensieriincodice-ep{episode}/{filename}"
 
 tiktok:
   enabled: false
