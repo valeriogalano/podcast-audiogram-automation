@@ -36,6 +36,7 @@ podcasts/
 .github/workflows/
   _pipeline.yml        # pipeline riutilizzabile (workflow_call)
   pensieriincodice.yml # caller: schedule + environment
+  instagram-token-refresh.yml # rinnova il token IG (1 e 15 del mese)
 docs/PLAN.md           # piano della migrazione
 ```
 
@@ -216,17 +217,28 @@ Il rinnovo e' una chiamata sola, che stampa token e nuova scadenza come JSON:
 python -m publisher --config <config> --refresh-instagram-token
 ```
 
-Finche' non e' automatizzato, quando la pipeline avvisa (7 giorni prima della
-scadenza) va eseguito a mano e i due secret vanno riscritti:
+Il giro lo fa da solo **`instagram-token-refresh.yml`**, il 1 e il 15 di ogni
+mese: rinnova il token e riscrive `INSTAGRAM_ACCESS_TOKEN` e
+`INSTAGRAM_TOKEN_EXPIRY` nell'environment. Due passate al mese invece di una
+sola a ridosso della scadenza, cosi' un run fallito non e' fatale.
+
+Richiede un secret in piu':
+
+| Secret | Contenuto |
+|---|---|
+| `SECRETS_PAT` | PAT con scope `repo`, serve a riscrivere i secret |
+
+Il `GITHUB_TOKEN` di default **non puo' scrivere secret**, nemmeno alzando
+`permissions`. Senza `SECRETS_PAT` il workflow fallisce con un messaggio
+esplicito invece di rinnovare in silenzio un token che poi butta.
+
+A mano, se serve:
 
 ```bash
+python -m publisher --config <config> --refresh-instagram-token
 gh secret set INSTAGRAM_ACCESS_TOKEN --env pensieriincodice --repo valeriogalano/podcast-audiogram-automation
 gh secret set INSTAGRAM_TOKEN_EXPIRY --env pensieriincodice --repo valeriogalano/podcast-audiogram-automation
 ```
-
-**Da fare**: un workflow schedulato che faccia questo giro da solo il 1 e il 15
-di ogni mese. Richiede un PAT con scope `repo` nell'environment (es.
-`SECRETS_PAT`), perche' il `GITHUB_TOKEN` di default non puo' scrivere secret.
 
 > Il reusable richiede `contents: write` (commit stato + Release): il caller lo
 > concede con un blocco `permissions:`, perché il default del `GITHUB_TOKEN` del

@@ -97,24 +97,24 @@ jobs:
 
     steps:
       - name: Checkout orchestratore
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Checkout generator
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ inputs.generator_repo }}
           ref: ${{ inputs.generator_ref }}
           path: tools/generator
 
       - name: Checkout publisher
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ inputs.publisher_repo }}
           ref: ${{ inputs.publisher_ref }}
           path: tools/publisher
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
