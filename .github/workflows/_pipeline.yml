@@ -145,8 +145,11 @@ jobs:
         env:
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_IG_USER_ID: ${{ secrets.INSTAGRAM_IG_USER_ID }}
+          INSTAGRAM_TOKEN_EXPIRY: ${{ secrets.INSTAGRAM_TOKEN_EXPIRY }}
         run: |
-          VARS='$OUTPUT_DIR $SECRETS_DIR $STATE_FILE $TELEGRAM_API_ID $TELEGRAM_API_HASH'
+          VARS='$OUTPUT_DIR $SECRETS_DIR $STATE_FILE $TELEGRAM_API_ID $TELEGRAM_API_HASH $INSTAGRAM_ACCESS_TOKEN $INSTAGRAM_IG_USER_ID $INSTAGRAM_TOKEN_EXPIRY'
           envsubst "$VARS" < "podcasts/${{ inputs.podcast }}/generate.yaml" > "$GENERATE_CFG"
           envsubst "$VARS" < "podcasts/${{ inputs.podcast }}/publish.yaml"  > "$PUBLISH_CFG"
 

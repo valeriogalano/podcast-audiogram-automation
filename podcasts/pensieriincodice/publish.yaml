@@ -20,7 +20,12 @@ youtube:
     - shorts
 
 instagram:
-  enabled: false
+  enabled: true
+  access_token: ${INSTAGRAM_ACCESS_TOKEN}
+  ig_user_id: ${INSTAGRAM_IG_USER_ID}
+  # Data ISO YYYY-MM-DD: il tool avvisa 7 giorni prima e fallisce dopo. Il token
+  # long-lived Meta dura 60 giorni, quindi va rinnovato (e il secret aggiornato).
+  token_expiry: ${INSTAGRAM_TOKEN_EXPIRY}
 
 tiktok:
   enabled: false
