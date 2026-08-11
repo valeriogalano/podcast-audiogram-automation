@@ -54,7 +54,7 @@ subtitles:
   vertical:
     y_offset: 0.91
 
-show_subtitles: false
+show_subtitles: true
 use_episode_cover: true
 header_title_source: soundbite
 
