@@ -1,0 +1,98 @@
+name: Rinnova il token Instagram
+
+# Il token long-lived di Instagram dura 60 giorni. L'API lo rinnova solo se e'
+# ancora vivo e ha almeno 24 ore: una volta scaduto non si recupera piu' da
+# codice e tocca rifare il giro nella console Meta. Per questo gira due volte al
+# mese invece che "poco prima della scadenza": diverse occasioni di riprovare
+# valgono piu' di una sola, precisa e fragile.
+
+on:
+  schedule:
+    - cron: '0 6 1,15 * *'   # il 1 e il 15 di ogni mese, 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment con i secret Instagram"
+        required: false
+        default: pensieriincodice
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'pensieriincodice' }}
+    steps:
+      - name: Checkout orchestratore
+        uses: actions/checkout@v7
+
+      - name: Checkout publisher
+        uses: actions/checkout@v7
+        with:
+          repository: valeriogalano/podcast-audiogram-publisher
+          path: tools/publisher
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Dipendenze
+        run: pip install -r tools/publisher/requirements.txt
+
+      - name: Rinnova il token
+        id: refresh
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${INSTAGRAM_ACCESS_TOKEN:-}" ]; then
+            echo "::error::INSTAGRAM_ACCESS_TOKEN non configurato in questo environment."
+            exit 1
+          fi
+
+          # Config minima: al refresh serve solo il token.
+          umask 077
+          printf 'instagram:\n  enabled: true\n  access_token: "%s"\n' "$INSTAGRAM_ACCESS_TOKEN" > refresh.yaml
+
+          # Il tool stampa il JSON su stdout e i log su stderr, quindi il
+          # redirect cattura solo il primo.
+          PYTHONPATH=tools/publisher python -m publisher \
+            --config refresh.yaml --refresh-instagram-token > refreshed.json
+          rm -f refresh.yaml
+
+          # Mascherati subito: da qui in poi il nuovo token puo' finire in un log
+          # solo come ***.
+          NEW_TOKEN=$(python -c "import json;print(json.load(open('refreshed.json'))['access_token'])")
+          echo "::add-mask::$NEW_TOKEN"
+          NEW_EXPIRY=$(python -c "import json;print(json.load(open('refreshed.json'))['token_expiry'])")
+          rm -f refreshed.json
+
+          echo "token=$NEW_TOKEN" >> "$GITHUB_OUTPUT"
+          echo "expiry=$NEW_EXPIRY" >> "$GITHUB_OUTPUT"
+
+      - name: Riscrivi i secret
+        env:
+          # PAT con scope `repo`: il GITHUB_TOKEN di default non puo' scrivere
+          # secret, nemmeno con permissions elevati.
+          GH_TOKEN: ${{ secrets.SECRETS_PAT }}
+          ENVIRONMENT: ${{ inputs.environment || 'pensieriincodice' }}
+          NEW_TOKEN: ${{ steps.refresh.outputs.token }}
+          NEW_EXPIRY: ${{ steps.refresh.outputs.expiry }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::SECRETS_PAT mancante: il token e' stato rinnovato ma non salvato."
+            echo "::error::Crea un PAT con scope 'repo' e aggiungilo all'environment $ENVIRONMENT come SECRETS_PAT."
+            echo "::error::Attenzione: il token appena ottenuto e' andato perso, e quello vecchio resta valido fino alla sua scadenza."
+            exit 1
+          fi
+
+          gh secret set INSTAGRAM_ACCESS_TOKEN --env "$ENVIRONMENT" --repo "$GITHUB_REPOSITORY" --body "$NEW_TOKEN"
+          gh secret set INSTAGRAM_TOKEN_EXPIRY --env "$ENVIRONMENT" --repo "$GITHUB_REPOSITORY" --body "$NEW_EXPIRY"
+
+          echo "Token Instagram rinnovato, valido fino al **$NEW_EXPIRY**." >> "$GITHUB_STEP_SUMMARY"

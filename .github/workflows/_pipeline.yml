@@ -97,24 +97,24 @@ jobs:
 
     steps:
       - name: Checkout orchestratore
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Checkout generator
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ inputs.generator_repo }}
           ref: ${{ inputs.generator_ref }}
           path: tools/generator
 
       - name: Checkout publisher
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ inputs.publisher_repo }}
           ref: ${{ inputs.publisher_ref }}
           path: tools/publisher
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -145,8 +145,10 @@ jobs:
         env:
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_TOKEN_EXPIRY: ${{ secrets.INSTAGRAM_TOKEN_EXPIRY }}
         run: |
-          VARS='$OUTPUT_DIR $SECRETS_DIR $STATE_FILE $TELEGRAM_API_ID $TELEGRAM_API_HASH'
+          VARS='$OUTPUT_DIR $SECRETS_DIR $STATE_FILE $TELEGRAM_API_ID $TELEGRAM_API_HASH $INSTAGRAM_ACCESS_TOKEN $INSTAGRAM_TOKEN_EXPIRY'
           envsubst "$VARS" < "podcasts/${{ inputs.podcast }}/generate.yaml" > "$GENERATE_CFG"
           envsubst "$VARS" < "podcasts/${{ inputs.podcast }}/publish.yaml"  > "$PUBLISH_CFG"
 
