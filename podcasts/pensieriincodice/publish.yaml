@@ -21,10 +21,12 @@ youtube:
 
 instagram:
   enabled: true
+  # API Instagram con Instagram Login (graph.instagram.com): serve solo un
+  # account IG professional, nessuna Pagina Facebook.
   access_token: ${INSTAGRAM_ACCESS_TOKEN}
-  ig_user_id: ${INSTAGRAM_IG_USER_ID}
-  # Data ISO YYYY-MM-DD: il tool avvisa 7 giorni prima e fallisce dopo. Il token
-  # long-lived Meta dura 60 giorni, quindi va rinnovato (e il secret aggiornato).
+  # ig_user_id omesso di proposito: il tool lo risolve dal token. Un secret in meno.
+  # Data ISO YYYY-MM-DD: il tool avvisa 7 giorni prima e rifiuta di pubblicare dopo.
+  # Il token dura 60 giorni e lo rinnova instagram-token-refresh.yml.
   token_expiry: ${INSTAGRAM_TOKEN_EXPIRY}
 
 tiktok:

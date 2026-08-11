@@ -197,6 +197,36 @@ I secret stanno in un **Environment GitHub** omonimo del podcast (es.
 | `TELEGRAM_API_ID` | api_id Telegram |
 | `TELEGRAM_API_HASH` | api_hash Telegram |
 | `TELEGRAM_SESSION_B64` | `base64` di `secrets/telegram.session` |
+| `INSTAGRAM_ACCESS_TOKEN` | token long-lived Instagram (60 giorni) |
+| `INSTAGRAM_TOKEN_EXPIRY` | data ISO `YYYY-MM-DD` di scadenza del token |
+
+### Instagram: il token scade ogni 60 giorni
+
+Il publisher usa l'**API Instagram con Instagram Login**: serve un account IG
+professional e basta, nessuna Pagina Facebook. Non serve nemmeno l'id
+dell'account: il tool lo ricava dal token.
+
+Il token pero' dura **60 giorni** e va rinnovato prima che scada — l'API lo
+rinnova solo se e' ancora vivo e ha almeno 24 ore. Scaduto, si rifa' a mano
+nella console Meta.
+
+Il rinnovo e' una chiamata sola, che stampa token e nuova scadenza come JSON:
+
+```bash
+python -m publisher --config <config> --refresh-instagram-token
+```
+
+Finche' non e' automatizzato, quando la pipeline avvisa (7 giorni prima della
+scadenza) va eseguito a mano e i due secret vanno riscritti:
+
+```bash
+gh secret set INSTAGRAM_ACCESS_TOKEN --env pensieriincodice --repo valeriogalano/podcast-audiogram-automation
+gh secret set INSTAGRAM_TOKEN_EXPIRY --env pensieriincodice --repo valeriogalano/podcast-audiogram-automation
+```
+
+**Da fare**: un workflow schedulato che faccia questo giro da solo il 1 e il 15
+di ogni mese. Richiede un PAT con scope `repo` nell'environment (es.
+`SECRETS_PAT`), perche' il `GITHUB_TOKEN` di default non puo' scrivere secret.
 
 > Il reusable richiede `contents: write` (commit stato + Release): il caller lo
 > concede con un blocco `permissions:`, perché il default del `GITHUB_TOKEN` del
