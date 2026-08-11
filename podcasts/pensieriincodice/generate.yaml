@@ -62,10 +62,14 @@ caption_labels:
 caption_transcript: last
 
 cta:
-  enabled: false
+  enabled: true
   text: "Link in bio"
   vertical:
-    y_offset: 0.82
+    # Fra il titolo del soundbite e la copertina. Verificato in locale l'11/08/2026
+    # su ep150/sb1: a 0.82 finiva nella fascia bassa, dove l'interfaccia di
+    # Instagram (didascalia, audio, pulsanti) lo copriva.
+    # La fascia arancione in basso resta libera: e' li' che andranno i sottotitoli.
+    y_offset: 0.23
   square:
     y_offset: 0.85
   horizontal:
