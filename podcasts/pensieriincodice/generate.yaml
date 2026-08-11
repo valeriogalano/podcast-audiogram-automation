@@ -46,6 +46,14 @@ hashtags:
   - podcast
   - pensieriincodice
 
+# Posizione del blocco sottotitoli: frazione dell'area centrale misurata dal suo
+# bordo alto. Il default del generator e' 0.84; 0.91 lo abbassa di circa un rigo
+# (un rigo vale ~0.07 in verticale), per portarlo dentro la fascia arancione in
+# basso senza accavallarsi al CTA "Link in bio" che sta a 0.23.
+subtitles:
+  vertical:
+    y_offset: 0.91
+
 show_subtitles: false
 use_episode_cover: true
 header_title_source: soundbite
