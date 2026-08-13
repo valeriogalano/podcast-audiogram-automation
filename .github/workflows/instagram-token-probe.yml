@@ -1,0 +1,60 @@
+name: Sonda il token Instagram
+
+# Il 13/08/2026 un token rinnovato due giorni prima e' stato invalidato da Meta
+# senza che nulla lo toccasse da parte nostra. Dai log non e' stato possibile
+# capire ne' quando ne' perche': la pipeline gira due volte a settimana, quindi
+# la finestra di invalidazione era larga 38 ore e il valore del token vecchio
+# non esisteva piu' da nessuna parte.
+#
+# Questa sonda non previene nulla e non pubblica nulla: chiede solo /me una
+# volta all'ora. Serve a restringere quella finestra a un'ora, cosi' alla
+# prossima occorrenza si vede se il token muore sempre dopo un rinnovo, sempre
+# a una certa ora, o a caso. Se dopo qualche mese la risposta non arriva mai
+# perche' non ricapita, questo file si cancella senza rimpianti.
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Un run in coda basta e avanza: se GitHub accumula ritardo non ha senso
+# ripetere la stessa domanda dieci volte di fila.
+concurrency:
+  group: instagram-token-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    environment: pensieriincodice
+    steps:
+      - name: Interroga /me
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${INSTAGRAM_ACCESS_TOKEN:-}" ]; then
+            echo "::error::INSTAGRAM_ACCESS_TOKEN non configurato in questo environment."
+            exit 1
+          fi
+
+          # --data-urlencode tiene il token fuori dalla riga di comando visibile
+          # in ps, e -sS lascia passare gli errori di rete senza la progress bar.
+          BODY=$(curl -sS -G https://graph.instagram.com/v23.0/me \
+            --data-urlencode "fields=user_id,username" \
+            --data-urlencode "access_token=$INSTAGRAM_ACCESS_TOKEN")
+
+          # La risposta di errore di Meta non contiene mai il token, quindi
+          # stamparla per intero e' sicuro ed e' esattamente il dato che serve:
+          # code e subcode distinguono "scaduto" da "non autorizzato".
+          if printf '%s' "$BODY" | grep -q '"user_id"'; then
+            echo "Token vivo: $BODY" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::Token Instagram non valido: $BODY"
+            echo "Token NON valido: $BODY" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
