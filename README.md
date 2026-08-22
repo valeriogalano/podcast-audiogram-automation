@@ -186,6 +186,34 @@ gh workflow run pensieriincodice.yml -f mode=full -f episode=150 -f force=true
 
 ---
 
+## Notifica delle pubblicazioni
+
+Nessuna piattaforma social avvisa delle proprie pubblicazioni, e Telegram non
+notifica i messaggi che mandi a te stesso. La notifica arriva quindi da GitHub:
+a fine run la pipeline commenta su una **issue fissa di questo repo**, e GitHub
+manda la mail a chi la segue. Il commento contiene l'elenco delle piattaforme
+con il permalink di ogni post — il publisher lo stampa su stdout, i log restano
+su stderr.
+
+Serve una **variabile di repo** (non un secret) col numero della issue:
+
+```bash
+gh issue create --title "Publishing log" --body "Log delle pubblicazioni: un commento per run."
+gh variable set PUBLISH_LOG_ISSUE --body "<numero-issue>"
+```
+
+Senza `PUBLISH_LOG_ISSUE` lo step non fa nulla e la pipeline gira come prima.
+
+Nel commento va **solo** il riepilogo del publisher, mai estratti di log: il
+repo e' pubblico, il masking dei secret di GitHub vale nei log del job e non nel
+corpo di una issue, e i token viaggiano in query string. Una piattaforma fallita
+compare come fallita e basta; il motivo si legge nel run.
+
+Telegram Stories non ha URL e TikTok restituisce un `publish_id` che non e' l'id
+del video: per queste due il riepilogo riporta un descrittore, non un link.
+
+---
+
 ## Secret (per podcast → GitHub Environment)
 
 I secret stanno in un **Environment GitHub** omonimo del podcast (es.

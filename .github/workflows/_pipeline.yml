@@ -81,6 +81,7 @@ jobs:
     environment: ${{ inputs.environment }}
     permissions:
       contents: write   # commit di published.json + gestione Release/asset
+      issues: write     # commento di riepilogo sulla issue di log pubblicazioni
     env:
       OUTPUT_DIR: ${{ github.workspace }}/output
       CONFIG_DIR: ${{ github.workspace }}/.audiogram-config
@@ -260,8 +261,12 @@ jobs:
           fi
           DRY=()
           [ "$DRY_RUN_INPUT" = "true" ] && DRY=(--dry-run)
+          # Il publisher stampa il riepilogo markdown delle pubblicazioni su
+          # stdout (i log vanno su stderr): lo salviamo per lo step di notifica.
+          # pipefail perche' con la pipe l'exit code sarebbe quello di tee.
+          set -o pipefail
           python -m publisher "${TARGET[@]}" --config "$PUBLISH_CFG" --limit "$PUBLISH_LIMIT" \
-            --state-file "$STATE_FILE" "${DRY[@]}"
+            --state-file "$STATE_FILE" "${DRY[@]}" | tee "$RUNNER_TEMP/publish-summary.md"
 
       # !cancelled() fa girare il commit anche se lo step di pubblicazione e'
       # fallito: il publisher salva lo stato su disco subito dopo OGNI piattaforma
@@ -285,3 +290,28 @@ jobs:
             git pull --rebase --autostash origin "$GITHUB_REF_NAME"
             git push origin HEAD:"$GITHUB_REF_NAME"
           fi
+
+      # Notifica: nessuna piattaforma social avvisa delle proprie pubblicazioni,
+      # e un commento su una issue fissa fa arrivare la mail nativa di GitHub a
+      # chi la segue. vars.PUBLISH_LOG_ISSUE e' il numero della issue di log;
+      # se non e' impostata, lo step non fa nulla.
+      - name: Notifica pubblicazioni sulla issue di log
+        if: ${{ !cancelled() && inputs.dry_run != 'true' && vars.PUBLISH_LOG_ISSUE != '' && (inputs.mode == 'full' || inputs.mode == 'publish') }}
+        env:
+          ISSUE: ${{ vars.PUBLISH_LOG_ISSUE }}
+          PODCAST: ${{ inputs.podcast }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          SUMMARY="$RUNNER_TEMP/publish-summary.md"
+          if [ ! -s "$SUMMARY" ]; then
+            echo "Nessun riepilogo da notificare"
+            exit 0
+          fi
+          # Nel commento va SOLO il riepilogo del publisher, mai estratti di log:
+          # il repo e' pubblico, il masking dei secret vale nei log del job e non
+          # nel corpo di una issue, e i token viaggiano in query string.
+          {
+            cat "$SUMMARY"
+            printf '\n_%s - [run](%s)_\n' "$PODCAST" "$RUN_URL"
+          } > "$RUNNER_TEMP/publish-comment.md"
+          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/publish-comment.md"
