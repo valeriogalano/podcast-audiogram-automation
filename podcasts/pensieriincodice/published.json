@@ -10,7 +10,8 @@
     "ep150/sb4",
     "ep150/sb5",
     "ep151/sb1",
-    "ep151/sb2"
+    "ep151/sb2",
+    "ep151/sb3"
   ],
   "telegram": [
     "ep148/sb1",
@@ -21,14 +22,16 @@
     "ep150/sb4",
     "ep150/sb5",
     "ep151/sb1",
-    "ep151/sb2"
+    "ep151/sb2",
+    "ep151/sb3"
   ],
   "telegram:peer:me": [
     "ep150/sb2",
     "ep150/sb3",
     "ep150/sb4",
     "ep150/sb5",
-    "ep151/sb1"
+    "ep151/sb1",
+    "ep151/sb3"
   ],
   "telegram:peer:@pensieriincodice": [
     "ep150/sb2",
@@ -36,14 +39,16 @@
     "ep150/sb4",
     "ep150/sb5",
     "ep151/sb1",
-    "ep151/sb2"
+    "ep151/sb2",
+    "ep151/sb3"
   ],
   "telegram:peer:@pensieriincodicecommunity": [
     "ep150/sb2",
     "ep150/sb3",
     "ep150/sb4",
     "ep150/sb5",
-    "ep151/sb1"
+    "ep151/sb1",
+    "ep151/sb3"
   ],
   "instagram": [
     "ep150/sb1",
@@ -52,6 +57,7 @@
     "ep150/sb4",
     "ep150/sb5",
     "ep151/sb1",
-    "ep151/sb2"
+    "ep151/sb2",
+    "ep151/sb3"
   ]
 }
